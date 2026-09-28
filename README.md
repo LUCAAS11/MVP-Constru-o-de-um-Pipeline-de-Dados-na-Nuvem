@@ -48,6 +48,7 @@ O projeto utilizou a Modelagem Dimensional através de um **Esquema Estrela (Sta
 
 **Tabela: `dim_clientes`** (Dimensão)
 *   **Contexto:** Dados geográficos e identificação dos clientes.
+*   **Linhagem:** Os dados desta tabela são consumidos de forma direta da `mvp.silver.customers`, sem junções adicionais.
 *   `customer_id` (string): Chave primária do cliente no pedido.
 *   `customer_unique_id` (string): Identificador único do cliente.
 *   `customer_city` (string): Cidade de residência.
@@ -55,11 +56,13 @@ O projeto utilizou a Modelagem Dimensional através de um **Esquema Estrela (Sta
 
 **Tabela: `dim_produtos`** (Dimensão)
 *   **Contexto:** Categorias e características dos produtos ofertados.
+*   **Linhagem:** Os dados desta tabela são consumidos de forma direta da `mvp.silver.products`, sem junções adicionais.
 *   `product_id` (string): Chave primária do produto.
 *   `product_category_name` (string): Categoria do produto (Domínio: nomes de categorias ou "nao_informado").
 
 **Tabela: `fato_vendas`** (Fato)
 *   **Contexto:** Registro transacional cruzando itens vendidos, clientes, valores monetários e métricas logísticas (apenas pedidos consolidados com status `delivered`).
+*   **Linhagem:** Resulta de um `INNER JOIN` entre `mvp.silver.order_items` e `mvp.silver.orders`, além de um `LEFT JOIN` com uma subquery agregada da `mvp.silver.reviews`.
 *   `order_id` (string): Identificador único do pedido.
 *   `order_item_id` (integer): Sequencial do item dentro do pedido.
 *   `product_id` (string): FK ligando à `dim_produtos`.
@@ -99,6 +102,7 @@ Durante a transformação da camada Bronze para a Silver, a exploração inicial
 2. **Nulos em Dimensões:** Alguns produtos não tinham classificação de categoria definida. 
     *   *Solução aplicada:* Preenchimento padrão (`coalesce`) injetando a string `"nao_informado"` para garantir que nenhuma análise financeira fosse descartada em futuras agregações.
 3. **Verificação Gold:** A etapa inicial de exploração (via SQL) na tabela fato validou 110.197 registros, resultando em zero clientes nulos e zero preços nulos, garantindo a completude das chaves para as análises subsequentes.
+4. **Acurácia e Outliers:** Não foram identificados valores negativos em preços ou fretes, atestando a acurácia financeira da base. Optou-se por manter os outliers de alto valor de frete constatados nas regiões Norte e Nordeste, pois eles não são erros sistêmicos, mas sim reflexos genuínos da barreira logística evidenciada na análise de negócios.
 
 **Validação Final de Qualidade:**
 
